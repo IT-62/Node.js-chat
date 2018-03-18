@@ -12,20 +12,23 @@ const rl = readline.createInterface( {
 });
 
 const socket = new net.Socket();
-let message;
+
 
 socket.connect({
   port: 2000,
-  host: '127.0.0.1',
+  host: '169.254.15.163',
 },() => {
   socket.write(JSON.stringify(name));
-  socket.on('data', (data) => {
-      let result = JSON.parse(data);
-      console.clear();
-      console.log(result);
-  })
 });
 
-  rl.question('>', (answer) =>{
-    message === 'end' ? rl.close() : socket.write(JSON.stringify(answer));
-  });
+socket.on('data', (data) => {
+  let result = JSON.parse(data);
+  console.clear();
+  console.log(result);
+})
+
+rl.on('line', (input) => {
+  let message = `${name} : ${input}`
+  input === 'end' ? rl.close() : socket.write(JSON.stringify(message));
+});
+
