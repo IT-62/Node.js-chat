@@ -8,7 +8,7 @@ const name = 'alex';
 
 const rl = readline.createInterface( {
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout;
 });
 
 const socket = new net.Socket();
@@ -26,20 +26,13 @@ socket.connect({
   })
 });
 
-
-//while (message != 'end'){
   rl.question('>', (answer) =>{
-    if(message == 'end')
-    {
+    if(message == 'end'){
       rl.close();
     }
-     else
-     {
+     else{
        message = answer;
        socket.write(JSON.stringify(message));
      }
 
   });
-
-
-//}
