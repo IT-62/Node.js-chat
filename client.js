@@ -4,7 +4,7 @@ const net = require('net');
 
 const readline = require('readline');
 
-const name = 'alex';
+const name = 'Nikita';
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -12,6 +12,7 @@ const rl = readline.createInterface({
 });
 
 const socket = new net.Socket();
+
 let message = '';
 
 socket.connect({
@@ -27,11 +28,6 @@ socket.connect({
 });
 
 rl.question('>', (answer) => {
-  if (message === 'end') {
-    rl.close();
-  } else {
-    message = answer;
-    socket.write(JSON.stringify(message));
-  }
-
+  message === 'end' ? rl.close() : socket.write(JSON.stringify(answer));
 });
+
