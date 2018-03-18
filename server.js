@@ -7,16 +7,16 @@ const messages = [];
 const server = net.createServer((socket) => {
   socket.on('data', (data) => {
     const message = JSON.parse(data);
-    console.log('new connection');
+    console.log('new connection with' + message);
     if (!users.includes(socket)) {
-      const history = messages.join('\n');
+      // let history = messages.join('\n');
       users.push(socket);
-      socket.write(JSON.stringify(history));
-    }
-    for (const user of users) {
-      user.write(data);
+      // socket.write(JSON.stringify(history))
     }
     messages.push(message);
+    for (const user of users) {
+      user.write(JSON.stringify(messages));
+    }
   });
 });
 
