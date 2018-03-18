@@ -26,9 +26,7 @@ socket.on('data', (data) => {
   console.clear();
   console.log(result);
 })
-
 rl.on('line', (input) => {
   let message = `${name} : ${input}`
   input === 'end' ? rl.close() : socket.write(JSON.stringify(message));
 });
-

@@ -9,12 +9,10 @@ const server = net.createServer((socket) => {
         let message = JSON.parse(data);
         console.log('new connection')
         if(!users.includes(socket)){
-            let history = messages.join('\n');
             users.push(socket);
-            socket.write(JSON.stringify(history))
         }
         for(let user of users){
-            user.write(data)
+            user.write(JSON.stringify(messages.join('\n')))
         }
         messages.push(message);
     });
