@@ -8,11 +8,11 @@ const socket = new net.Socket();
 
 socket.connect({
   port: 2000,
-  host: '10.241.129.31',
+  host: '10.42.0.20',
 }, () => {
-  socket.write(JSON.stringify('Hello from Nikita'));
+  socket.write(JSON.stringify('Hello from new user!'));
   socket.on('data', (data) => {
-      let result = JSON.parse(data);
-      console.log(result)
-  })
+    const result = JSON.parse(data);
+    console.log(result);
+  });
 });
