@@ -4,4 +4,4 @@
 ## Deploy
 
 * ```npm install```
-* install [mongodb(Community server)](https://www.mongodb.com/download-center?jmp=nav#community)
+* [mongodb install instruction](https://metanit.com/nosql/mongodb/1.2.phpy)
