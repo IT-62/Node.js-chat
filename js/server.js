@@ -2,7 +2,7 @@
 
 const net = require('net');
 const mongodb = require('mongodb').MongoClient;
-const config = require('./config/db');
+const config = require('../config/db');
 
 const createHash = require('./cipher/cipher');
 
@@ -13,6 +13,14 @@ mongodb.connect(config.url, (err, client) => {
 
   const db = client.db('chat');
 
+  const buildMsg = data => {
+    const date = data.time;
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+    return `\n${data.sender}: ${data.msg}\n(${hours}:${minutes}:${seconds})\n`;
+  };
+
   const sendAllMsg = user => {
     db.collection('messages')
       .find({})
@@ -21,11 +29,7 @@ mongodb.connect(config.url, (err, client) => {
         if (res.length) {
           let msg;
           res.forEach((data) => {
-            const date = data.time;
-            const hours = date.getHours();
-            const minutes = date.getMinutes();
-            const seconds = date.getSeconds();
-            msg += `\n${data.sender}: ${data.msg}\n(${hours}:${minutes}:${seconds})\n`;
+            msg += buildMsg(data);
           });
           user.write(JSON.stringify(msg));
         } else {
@@ -45,22 +49,27 @@ mongodb.connect(config.url, (err, client) => {
     msg.time = new Date();
     msg.sender = user.login;
     db.collection('messages').insertOne(msg);
-    for (const usero of online) {
-      if (usero === user) continue;
-      const date = msg.time;
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-      const seconds = date.getSeconds();
-      usero.write(JSON.stringify(
-        `${msg.sender}: ${msg.msg}\n(${hours}:${minutes}:${seconds})`
-      ));
+    for (const usr of online) {
+      if (usr === user) continue;
+      usr.write(JSON.stringify(buildMsg(msg)));
+    }
+  };
+
+  const verifyPassword = (correctPassword, password, user) => {
+    if (correctPassword === createHash(password)) {
+      sendAllMsg(user);
+    } else {
+      const err = {
+        invalidPassword: '\nInvalid password\n'
+      };
+      user.write(JSON.stringify({ err }));
     }
   };
 
   const authorization = (user, msg) => {
     user.login = msg.login;
     db.collection('users').findOne({ login: user.login }, (err, res) => {
-      if (res) sendAllMsg(user);
+      if (res) verifyPassword(res.password, msg.password, user);
       else addUser(user, msg);
     });
   };
@@ -68,6 +77,7 @@ mongodb.connect(config.url, (err, client) => {
   const server = net.createServer((user) => {
     online.push(user);
     console.log('New connection');
+
     user.on('data', (data) => {
       console.log('Received data');
       const msg = JSON.parse(data);
@@ -76,6 +86,7 @@ mongodb.connect(config.url, (err, client) => {
     });
 
     user.on('close', () => {
+      console.log(user.login, 'disconnected');
       online.splice(online.indexOf(user), 1);
     });
 
