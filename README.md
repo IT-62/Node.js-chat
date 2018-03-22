@@ -3,5 +3,5 @@
 
 ## Deploy
 
-* ```console run npm install```
+* ```run npm install```
 * install [mongodb](https://www.mongodb.com/download-center?jmp=nav#community)
