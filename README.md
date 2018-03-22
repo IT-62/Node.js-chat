@@ -4,4 +4,4 @@
 ## Deploy
 
 * ```npm install```
-* install [mongodb](https://www.mongodb.com/download-center?jmp=nav#community)
+* install [mongodb(Community server)](https://www.mongodb.com/download-center?jmp=nav#community)
