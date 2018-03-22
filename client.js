@@ -1,18 +1,33 @@
 'use strict';
 
 const net = require('net');
+const readline = require('readline');
 
-//let message = '';
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
-const socket = new net.Socket();
 
-socket.connect({
-  port: 2000,
-  host: '10.241.129.31',
-}, () => {
-  socket.write(JSON.stringify('Hello from Nikita'));
-  socket.on('data', (data) => {
-      let result = JSON.parse(data);
-      console.log(result)
-  })
+const user = net.createConnection(2020, () => {
+  let login, password;
+
+  rl.question('Login: ', (answer) => {
+    login = answer;
+    rl.question('Password: ', (answer) => {
+      password = answer;
+      user.write(JSON.stringify({ login, password }));
+    });
+  });
+
+  rl.on('line', (input) => {
+    const msg = input;
+    user.write(JSON.stringify({ msg }));
+  });
+
+});
+
+user.on('data', (data) => {
+  const message = JSON.parse(data);
+  console.log(`\n${message}\n`);
 });
