@@ -4,4 +4,4 @@
 ## Deploy
 
 * ```npm install```
-* [mongodb install instruction](https://metanit.com/nosql/mongodb/1.2.phpy)
+* [mongodb install instruction](https://metanit.com/nosql/mongodb/1.2.php)
