@@ -22,11 +22,11 @@ const QUERY_CREATE_TABLE_USERS = 'CREATE TABLE users (' +
     'PRIMARY KEY(id));';
 
 const QUERY_CREATE_TABLE_MESSAGES = 'CREATE TABLE messages (' +
-    'id VARCHAR(50) NOT NULL,' +
+    'id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,' +
     'text VARCHAR(250) NOT NULL,' +
     'idUserFrom VARCHAR(50) NOT NULL,' +
-    'idUserTo VARCHAR(50),' +
-    'PRIMARY KEY(id),' +
+    'idUserTo VARCHAR(50) NOT NULL,' +
+    'isRead BOOLEAN NOT NULL,' +
     'FOREIGN KEY (idUserFrom) REFERENCES users(id),' +
     'FOREIGN KEY (idUserTo) REFERENCES users(id));';
 
@@ -43,7 +43,7 @@ connection.connect((err) => {
 
       server = createServer();
       server.on('connection', () => {
-        log('connected user', 'connection');
+        log('connected user', 'system');
       });
 
       server.listen(2000);
@@ -105,7 +105,7 @@ const Message = function(idUserTo, idUserFrom, text) {
   this.idUserFrom = idUserFrom;
   this.text = text;
   this.date = new Date().toISOString();
-  connection.query('INSERT INTO messages (text, idUserTo, idUserFrom, date) VALUES ("' + this.text + '", "' +  this.idUserTo + '", "' + this.idUserFrom + '")', (err) => {
+  connection.query('INSERT INTO messages (text, idUserTo, idUserFrom, isRead) VALUES ("' + this.text + '", "' +  this.idUserTo + '", "' + this.idUserFrom + '", ' + false + ')', (err) => {
     if (err)
       log(err, 'error');
   });
@@ -115,17 +115,38 @@ const Message = function(idUserTo, idUserFrom, text) {
 Message.findDialog = (idUser1, idUser2, callback) => connection.query('SELECT * FROM messages WHERE (idUserFrom = ? AND idUserTo = ?) OR (idUserFrom = ? AND idUserTo = ?)', [idUser1, idUser2, idUser2, idUser1], (err, result) => {
   if (err)
     return log(err, 'error');
-  callback(result);
+  connection.query('UPDATE messages SET isRead = true WHERE (idUserFrom = ? AND idUserTo = ?) OR (idUserFrom = ? AND idUserTo = ?)', [idUser1, idUser2, idUser2, idUser1], (err) => {
+    if (err)
+      return log(err, 'error');
+    callback(result);
+  });
 });
-
 // Logs
 
 const date = new Date().toISOString();
+
 const log = (...params) => {
-  console.log(date, ...params);
+  const type = params.pop();
+  if (type === 'error')
+    console.log('\x1b[41m', date, ...params);
+  else if (type === 'message')
+    console.log('\x1b[33m', date, ...params.join('---'));
+  else if (type === 'system')
+    console.log('\x1b[37m', date, ...params);
 };
 
 //Server
+
+function changeTokensToNamesDialog(dialog, userFrom, userTo) {
+  return dialog.map((mess) => {
+    const message = { text: mess.text };
+    if (userFrom.id === mess.idUserFrom)
+      message.nameUserFrom = userFrom.name;
+    else
+      message.nameUserFrom = userTo.name;
+    return message;
+  });
+}
 
 function createServer() {
   return net.createServer((socket) => {
@@ -137,7 +158,7 @@ function createServer() {
       //Register
       if (message.type === 'register') {
         user = new User(message, socket);
-        log('registered:', user.name);
+        log('registered:', user.name, 'system');
         return socket.write(JSON.stringify({ token: user.id }));
       }
 
@@ -145,29 +166,33 @@ function createServer() {
         User.findById(message.idUser, (userFrom) => {
           User.findUserByName(message.destinationName, (userTo) => {
             new Message(userTo.id, userFrom.id, message.text);
-            log(userFrom.name, userTo.name, message.text, 'private-message');
-            sockets[userTo.id].write(JSON.stringify({ messages: [{ nameUserFrom: userFrom.name, text: message.text }] }));
+            log(userFrom.name, userTo.name, message.text, 'message');
+            sockets[userTo.id].write(JSON.stringify({ nameUserFrom: userFrom.name, newMess: true }));
           });
         });
       } else if (message.type === 'history') {
         User.findById(message.idUser, (userFrom) => {
           User.findUserByName(message.destinationName, (userTo) => {
             Message.findDialog(userFrom.id, userTo.id, (dialog) => {
-              sockets[userTo.id].write(JSON.stringify({ messages: dialog }));
+              log(userFrom.name, userTo.name, message.text, 'history');
+              sockets[userFrom.id].write(JSON.stringify({ messages: changeTokensToNamesDialog(dialog, userFrom, userTo), type: 'history' }));
             });
           });
         });
       } else if (!message.type) {
         User.findById(message.idUser, (userFrom) => {
           User.getAllUsers((users) => {
-            users.forEach((userTo) => {
-              new Message(userTo.id, '\\todo', message.text);
-              sockets[userTo.id].write(JSON.stringify({ messages: [{ nameUserFrom: userFrom.name, text: message.text }] }));
-            });
+            users.filter(user => user.id !== userFrom.id)
+              .forEach((userTo) => {
+                new Message(userTo.id, userFrom.id, message.text);
+                log(userFrom.name, userTo.name, message.text, 'message');
+                sockets[userTo.id].write(JSON.stringify({ messages: [{ nameUserFrom: userFrom.name, text: message.text }] }));
+              });
           });
         });
       }
-
     });
   });
 }
+//todo make rooms
+
