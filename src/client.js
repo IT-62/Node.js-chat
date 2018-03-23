@@ -2,6 +2,7 @@
 
 const net = require('net');
 const readline = require('readline');
+const server = require('../config/server');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -21,7 +22,13 @@ const showLoginForm = () => {
   });
 };
 
-user.connect(2020, () => {
+const parseError = (err) => {
+  if (err.invalidPassword) console.log(err.invalidPassword);
+  else if (err.userOnline) console.log(err.userOnline);
+  showLoginForm();
+};
+
+user.connect(server, () => {
   showLoginForm();
   rl.on('line', (input) => {
     const msg = input;
@@ -31,13 +38,6 @@ user.connect(2020, () => {
 
 user.on('data', (data) => {
   const message = JSON.parse(data);
-  if (!message.err) {
-    console.log(`\n${message}\n`);
-  } else {
-    const err = message.err;
-    if (err.invalidPassword) {
-      console.log(err.invalidPassword);
-      showLoginForm();
-    }
-  }
+  if (!message.err) console.log(`\n${message}\n`);
+  else parseError(message.err);
 });

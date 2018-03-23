@@ -38,9 +38,9 @@ mongodb.connect(config.url, (err, client) => {
       });
   };
 
-  const addUser = (user, msg) => {
-    msg.password = createHash(msg.password);
-    db.collection('users').insertOne(msg);
+  const addUser = (user, login, password) => {
+    password = createHash(password);
+    db.collection('users').insertOne({ login, password });
     sendAllMsg(user);
     console.log('Added new user', user.login);
   };
@@ -66,11 +66,16 @@ mongodb.connect(config.url, (err, client) => {
     }
   };
 
-  const authorization = (user, msg) => {
-    user.login = msg.login;
+  const authorization = (user, login, password) => {
+    if (online.find(x => x.login === login)) {
+      const err = { userOnline: 'User already online' };
+      user.write(JSON.stringify({ err }));
+      return;
+    }
+    user.login = login;
     db.collection('users').findOne({ login: user.login }, (err, res) => {
-      if (res) verifyPassword(res.password, msg.password, user);
-      else addUser(user, msg);
+      if (res) verifyPassword(res.password, password, user);
+      else addUser(user, login, password);
     });
   };
 
@@ -81,7 +86,7 @@ mongodb.connect(config.url, (err, client) => {
     user.on('data', (data) => {
       console.log('Received data');
       const msg = JSON.parse(data);
-      if (msg.password) authorization(user, msg);
+      if (msg.password) authorization(user, msg.login, msg.password);
       else sendMsg(user, msg);
     });
 
@@ -92,7 +97,7 @@ mongodb.connect(config.url, (err, client) => {
 
   });
 
-  server.listen(2020, () => {
+  server.listen(2000, () => {
     console.log('Listening start...');
   });
 
