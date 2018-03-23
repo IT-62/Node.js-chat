@@ -2,16 +2,19 @@
 
 const net = require('net');
 const mongodb = require('mongodb').MongoClient;
-const config = require('../config/db');
+const configDb = require('../config/db');
+const configServer = require('../config/server');
 
 const createHash = require('./cipher/cipher');
 
 const online = [];
 
-mongodb.connect(config.url, (err, client) => {
+mongodb.connect(configDb.url, (err, client) => {
   if (err) throw err;
 
   const db = client.db('chat');
+
+  const generateError = (err, user) => user.write(JSON.stringify({ err }));
 
   const buildMsg = data => {
     const date = data.time;
@@ -49,27 +52,20 @@ mongodb.connect(config.url, (err, client) => {
     msg.time = new Date();
     msg.sender = user.login;
     db.collection('messages').insertOne(msg);
-    for (const usr of online) {
-      if (usr === user) continue;
-      usr.write(JSON.stringify(buildMsg(msg)));
+    for (const userOnline of online) {
+      if (userOnline === user) continue;
+      userOnline.write(JSON.stringify(buildMsg(msg)));
     }
   };
 
   const verifyPassword = (correctPassword, password, user) => {
-    if (correctPassword === createHash(password)) {
-      sendAllMsg(user);
-    } else {
-      const err = {
-        invalidPassword: '\nInvalid password\n'
-      };
-      user.write(JSON.stringify({ err }));
-    }
+    if (correctPassword === createHash(password)) sendAllMsg(user);
+    else generateError('Invalid password', user);
   };
 
   const authorization = (user, login, password) => {
     if (online.find(x => x.login === login)) {
-      const err = { userOnline: 'User already online' };
-      user.write(JSON.stringify({ err }));
+      generateError('User already online', user);
       return;
     }
     user.login = login;
@@ -84,7 +80,6 @@ mongodb.connect(config.url, (err, client) => {
     console.log('New connection');
 
     user.on('data', (data) => {
-      console.log('Received data');
       const msg = JSON.parse(data);
       if (msg.password) authorization(user, msg.login, msg.password);
       else sendMsg(user, msg);
@@ -97,9 +92,8 @@ mongodb.connect(config.url, (err, client) => {
 
   });
 
-  server.listen(2000, () => {
+  server.listen(configServer.port, () => {
     console.log('Listening start...');
   });
 
-  // client.close();
 });

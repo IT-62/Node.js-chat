@@ -22,22 +22,20 @@ const showLoginForm = () => {
   });
 };
 
-const parseError = (err) => {
-  if (err.invalidPassword) console.log(err.invalidPassword);
-  else if (err.userOnline) console.log(err.userOnline);
+const handleError = (err) => {
+  console.log(`\n${err}\n`);
   showLoginForm();
 };
 
 user.connect(server, () => {
   showLoginForm();
   rl.on('line', (input) => {
-    const msg = input;
-    user.write(JSON.stringify({ msg }));
+    user.write(JSON.stringify({ input }));
   });
 });
 
 user.on('data', (data) => {
   const message = JSON.parse(data);
   if (!message.err) console.log(`\n${message}\n`);
-  else parseError(message.err);
+  else handleError(message.err);
 });
