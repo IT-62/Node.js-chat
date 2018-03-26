@@ -4,10 +4,10 @@ const net = require('net');
 const socket = new net.Socket();
 
 const readline = require('readline');
-let idUser;
-let userName;
+const user = { idUser: '', userName: '' };
 const friends = [];
 const newMess = {};
+let dialog = { userNameTo: null, messages: [] };
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -22,34 +22,37 @@ function addFriend(currDialog) {
 
 const commands = {
   register(lines) {
-    userName = lines[0];
+    user.userName = lines[0];
     commands.cls();
     socket.write(JSON.stringify({ type: 'register', text: lines[0] }));
   },
   private(lines) {
+    if (!dialog.userNameTo)
+      return console.log('Start dialog first');
     const text = lines[0];
-    const nameUserTo = lines[1];
-    socket.write(JSON.stringify({ type: 'privateMessage', text, destinationName: nameUserTo, idUser }));
-    addFriend(nameUserTo);
-    commands.cls();
-    commands.history([nameUserTo]);
+    socket.write(JSON.stringify({ type: 'privateMessage', text, destinationName: dialog.userNameTo, idUser: user.idUser }));
+    dialog.messages.push({ nameUserFrom: user.userName, text });
+    updateMess();
   },
   broad(lines) {
     const text = lines[0];
     commands.cls();
-    socket.write(JSON.stringify({ text, idUser }));
+    socket.write(JSON.stringify({ text, idUser: user.idUser }));
   },
   exit() {
     socket.end();
     rl.close();
   },
-  history(lines) {
+  talkTo(lines) {
+    dialog =  { userNameTo: null, messages: [] };
+    dialog.userNameTo = lines[0];
+    addFriend(lines[0]);
     commands.cls();
-    socket.write(JSON.stringify({ type: 'history', destinationName: lines[0], idUser }));
+    socket.write(JSON.stringify({ type: 'history', destinationName: lines[0], idUser: user.idUser }));
   },
   cls() {
     process.stdout.write('\x1B[2J\x1B[0f');
-    console.log('userName: ' + (userName || 'none'));
+    console.log('userName: ' + (user.userName || 'none'));
     console.log('Commands: ' + Object.keys(commands).join(', '));
     console.log('Friends: ' + friends.join(', '));
     let newMessString = '';
@@ -84,26 +87,41 @@ socket.connect({
   rl.prompt();
 });
 
+function updateMess() {
+  commands.cls();
+  if (dialog.messages)
+    dialog.messages.forEach((mess) => {
+      console.log('|', mess.nameUserFrom, '|', mess.text);
+    });
+}
+
+function addNewMessPopup(result) {
+  if (!newMess[result.nameUserFrom])
+    newMess[result.nameUserFrom] = 1;
+  else
+    newMess[result.nameUserFrom] += 1;
+}
+
 socket.on('data', (data) => {
   const result = JSON.parse(data);
   if (result.token)
-    idUser = result.token;
+    user.idUser = result.token;
   else if (result.err)
     log(result.err);
-  else if (result.newMess) {
-    if (!newMess[result.nameUserFrom])
-      newMess[result.nameUserFrom] = 1;
-    else
-      newMess[result.nameUserFrom] += 1;
-  } else if (result.type === 'history')
+  else if (result.nameUserFrom) {
+    if (!dialog.userNameTo || result.nameUserFrom !== dialog.userNameTo)
+      addNewMessPopup(result);
+    if (dialog.userNameTo && dialog.userNameTo === result.nameUserFrom)
+      dialog.messages.push({ nameUserFrom: result.nameUserFrom, text: result.text });
+    updateMess();
+  } else if (result.type === 'history') {
     result.messages.forEach((mess) => {
       if (newMess[mess.nameUserFrom])
         delete newMess[mess.nameUserFrom];
-      if (!mess.isRead)
-        console.log('\x1b[37m', '|', mess.nameUserFrom, '|', mess.text);
-      else
-        console.log('\x1b[33m', '|', mess.nameUserFrom, '|', mess.text);
+      dialog.messages.push({ nameUserFrom: mess.nameUserFrom, text: mess.text });
     });
+    updateMess();
+  }
   rl.prompt();
 });
 
@@ -111,7 +129,5 @@ socket.on('error', (err) => {
   console.dir(err);
 });
 
-//todo make messages selectable
-//todo make local storage for messages
 
 

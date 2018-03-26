@@ -167,7 +167,7 @@ function createServer() {
           User.findUserByName(message.destinationName, (userTo) => {
             new Message(userTo.id, userFrom.id, message.text);
             log(userFrom.name, userTo.name, message.text, 'message');
-            sockets[userTo.id].write(JSON.stringify({ nameUserFrom: userFrom.name, newMess: true }));
+            sockets[userTo.id].write(JSON.stringify({ nameUserFrom: userFrom.name, text: message.text }));
           });
         });
       } else if (message.type === 'history') {
@@ -186,7 +186,7 @@ function createServer() {
               .forEach((userTo) => {
                 new Message(userTo.id, userFrom.id, message.text);
                 log(userFrom.name, userTo.name, message.text, 'message');
-                sockets[userTo.id].write(JSON.stringify({ messages: [{ nameUserFrom: userFrom.name, text: message.text }] }));
+                sockets[userTo.id].write(JSON.stringify({ nameUserFrom: userFrom.name, text: message.text }));
               });
           });
         });
